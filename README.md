@@ -333,9 +333,10 @@ Las credenciales de AWS se leerán desde **GitHub Secrets** (`AWS_ACCESS_KEY_ID`
 **Grupo Los Parrilleros** — Universidad Tecnológica de Bolívar
 Docente: Rafael Enrique Monterroza Barrios
 
-| Integrante | Rol |
+| Integrante |
 |---|---|
-| _Nombre 1_ | _Rol_ |
-| _Nombre 2_ | _Rol_ |
-| _Nombre 3_ | _Rol_ |
-| _Nombre 4_ | _Rol_ |
+| _Luis Ruz_ |
+| _Kathy Otero_ | 
+| _Andres Buelvas_ | 
+| _Yuliana Martelo_ | 
+| _Emmanuel Buelvas_ |
