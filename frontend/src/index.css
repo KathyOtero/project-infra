@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paleta inspirada en el Caribe colombiano: azul mar, arena, coral. */
+  --color-caribe-blue: #0e7490;
+  --color-caribe-blue-dark: #155e75;
+  --color-caribe-sand: #fef3c7;
+  --color-caribe-coral: #f97316;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+}

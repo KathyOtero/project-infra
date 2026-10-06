@@ -1,0 +1,26 @@
+---
+- name: Configurar Servidores Web para CaribeXperience
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Actualizar índice de paquetes apt
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Instalar Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Asegurar que Nginx esté iniciado y habilitado
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Desplegar pagina de inicio base
+      copy:
+        content: "<h1>CaribeXperience - Servidor Web Activo</h1>"
+        dest: /var/www/html/index.html
+        mode: '0644'
