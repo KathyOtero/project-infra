@@ -334,9 +334,9 @@ Las credenciales de AWS se leerán desde **GitHub Secrets** (`AWS_ACCESS_KEY_ID`
 Docente: Rafael Enrique Monterroza Barrios
 
 | Integrante |
-|---|---|
-| _Luis Ruz_ |
-| _Kathy Otero_ | 
-| _Andres Buelvas_ | 
-| _Yuliana Martelo_ | 
-| _Emmanuel Buelvas_ |
+| --- |
+| Luis Ruz |
+| Kathy Otero |
+| Andres Buelvas |
+| Yuliana Martelo |
+| Emmanuel Buelvas |
