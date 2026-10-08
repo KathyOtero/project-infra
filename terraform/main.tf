@@ -225,25 +225,24 @@ resource "aws_security_group" "web_sg" {
     Name = "${var.project_name}-ec2-web-sg"
   }
 }
-
 # =========================================================
 # 4. BALANCEADOR DE CARGA (ALB)
 # =========================================================
 
 resource "aws_lb" "web_alb" {
-  name               = "${var.project_name}-alb"
+  name               = "${var.project_name}-alb-v2"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
   subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 
   tags = {
-    Name = "${var.project_name}-alb"
+    Name = "${var.project_name}-alb-v2"
   }
 }
 
 resource "aws_lb_target_group" "web_tg" {
-  name     = "${var.project_name}-tg"
+  name     = "${var.project_name}-tg-v2"
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -259,21 +258,9 @@ resource "aws_lb_target_group" "web_tg" {
   }
 
   tags = {
-    Name = "${var.project_name}-tg"
+    Name = "${var.project_name}-tg-v2"
   }
-}
-
-resource "aws_lb_listener" "web_listener" {
-  load_balancer_arn = aws_lb.web_alb.arn
-  port              = "80"
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.web_tg.arn
-  }
-}
-
+  
 # =========================================================
 # 5. CÓMPUTO & AUTO SCALING GROUP (ASG EN SUBREDES PRIVADAS)
 # =========================================================
