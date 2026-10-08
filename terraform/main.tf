@@ -243,7 +243,7 @@ resource "aws_lb" "web_alb" {
 }
 
 resource "aws_lb_target_group" "web_tg" {
-  name     = "${var.project_name}-tg-v2"
+  name     = "${var.project_name}-tg-v3"
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -259,7 +259,7 @@ resource "aws_lb_target_group" "web_tg" {
   }
 
   tags = {
-    Name = "${var.project_name}-tg-v2"
+    Name = "${var.project_name}-tg-v3"
   }
 }
 
@@ -358,4 +358,6 @@ resource "aws_autoscaling_policy" "cpu_policy" {
     }
     target_value = 70.0
   }
-}
+}git add terraform/main.tf
+git commit -m "Actualizando nombre de Target Group a v3"
+git push origin main
