@@ -1,0 +1,13 @@
+---
+- name: Actualizar paquetes
+  dnf:
+    name: '*'
+    state: latest
+
+- name: Instalar utilidades
+  dnf:
+    name:
+      - git
+      - curl
+      - unzip
+    state: present

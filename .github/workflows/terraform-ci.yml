@@ -1,33 +1,118 @@
-name: "Terraform CI Validation"
+name: "CI/CD Pipeline - CaribeXperience Infra"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
 
 jobs:
   validate:
-    name: "Validate Terraform Code"
+    name: "1. Validate Terraform"
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout del código
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Configurar Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0
 
-      - name: Auto-Formatear Terraform
-        run: terraform fmt
+      - name: Terraform Format Check
+        run: terraform fmt -check
         working-directory: ./terraform
 
-      - name: Inicializar Terraform
+      - name: Terraform Init
         run: terraform init -backend=false
         working-directory: ./terraform
 
-      - name: Validar Sintaxis
+      - name: Terraform Validate
         run: terraform validate
         working-directory: ./terraform
+
+  plan:
+    name: "2. Terraform Plan"
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Plan
+        run: terraform plan -no-color
+        working-directory: ./terraform
+
+  apply:
+    name: "3. Terraform Apply"
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: ./terraform
+
+  configure:
+    name: "4. Ansible Configure"
+    needs: apply
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python & Ansible
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Ansible & AWS Collection
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible boto3 botocore
+          ansible-galaxy collection install amazon.aws
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Run Ansible Playbook
+        run: ansible-playbook -i ansible/aws_ec2.yml ansible/site.yml
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"

@@ -1,0 +1,14 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+filters:
+  tag:Project: caribexperience
+  instance-state-name: [running]
+keyed_groups:
+  - key: tags.Environment
+    prefix: env
+  - key: tags.Project
+    prefix: project
+hostnames:
+  - ip-address
+  - dns-name
