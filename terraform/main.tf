@@ -192,7 +192,7 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# SG de las Instancias EC2 (Actualizado para evitar colisiones)
+# SG de las Instancias EC2
 resource "aws_security_group" "web_sg" {
   name        = "${var.project_name}-ec2-web-sg"
   description = "Permitir trafico HTTP solo desde el ALB y SSH"
@@ -225,6 +225,7 @@ resource "aws_security_group" "web_sg" {
     Name = "${var.project_name}-ec2-web-sg"
   }
 }
+
 # =========================================================
 # 4. BALANCEADOR DE CARGA (ALB)
 # =========================================================
@@ -260,7 +261,19 @@ resource "aws_lb_target_group" "web_tg" {
   tags = {
     Name = "${var.project_name}-tg-v2"
   }
-  
+}
+
+resource "aws_lb_listener" "web_listener" {
+  load_balancer_arn = aws_lb.web_alb.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web_tg.arn
+  }
+}
+
 # =========================================================
 # 5. CÓMPUTO & AUTO SCALING GROUP (ASG EN SUBREDES PRIVADAS)
 # =========================================================
