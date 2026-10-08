@@ -323,9 +323,9 @@ resource "aws_launch_template" "web_template" {
   }
 }
 
-# Auto Scaling Group (Desplegado en subredes privadas)
+# Auto Scaling Group (Desplegado en subredes privadas con nombre v2)
 resource "aws_autoscaling_group" "web_asg" {
-  name                = "${var.project_name}-asg"
+  name                = "${var.project_name}-asg-v2"
   vpc_zone_identifier = [aws_subnet.private_a.id, aws_subnet.private_b.id]
   target_group_arns   = [aws_lb_target_group.web_tg.arn]
 
