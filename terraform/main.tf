@@ -358,6 +358,4 @@ resource "aws_autoscaling_policy" "cpu_policy" {
     }
     target_value = 70.0
   }
-}git add terraform/main.tf
-git commit -m "Actualizando nombre de Target Group a v3"
-git push origin main
+}
