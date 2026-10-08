@@ -6,6 +6,14 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    bucket         = "caribexperience-tf-state-los-parrilleros"
+    key            = "dev/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "caribexperience-tf-locks"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
