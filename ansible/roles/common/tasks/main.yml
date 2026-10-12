@@ -1,13 +1,17 @@
 ---
-- name: Actualizar paquetes
-  dnf:
-    name: '*'
-    state: latest
-
-- name: Instalar utilidades
-  dnf:
-    name:
-      - git
-      - curl
-      - unzip
+- name: Install runtime packages on Amazon Linux 2023
+  ansible.builtin.dnf:
+    name: [docker, nginx, python3, python3-boto3]
     state: present
+- name: Enable Docker
+  ansible.builtin.service:
+    name: docker
+    enabled: true
+    state: started
+- name: Create application directory
+  ansible.builtin.file:
+    path: /opt/caribexperience
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'

@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.9.0, < 2.0.0"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -15,6 +15,7 @@ provider "aws" {
       Project     = "caribexperience"
       Environment = "bootstrap"
       ManagedBy   = "Terraform"
+      Student     = "Los Parrilleros"
     }
   }
 }
@@ -68,6 +69,10 @@ resource "aws_dynamodb_table" "terraform_locks" {
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
 
+  lifecycle {
+    prevent_destroy = true
+  }
+
   attribute {
     name = "LockID"
     type = "S"
@@ -76,4 +81,12 @@ resource "aws_dynamodb_table" "terraform_locks" {
   tags = {
     Name = var.dynamodb_table_name
   }
+}
+
+resource "aws_s3_bucket_policy" "require_tls" {
+  bucket = aws_s3_bucket.terraform_state.id
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Deny", Principal = "*", Action = "s3:*", Resource = [aws_s3_bucket.terraform_state.arn, "${aws_s3_bucket.terraform_state.arn}/*"], Condition = { Bool = { "aws:SecureTransport" = "false" } } }]
+  })
 }

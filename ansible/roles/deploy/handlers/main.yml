@@ -1,0 +1,6 @@
+---
+- name: Restart backend
+  ansible.builtin.systemd_service:
+    name: caribexperience
+    daemon_reload: true
+    state: restarted

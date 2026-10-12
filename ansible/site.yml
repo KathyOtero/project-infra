@@ -1,7 +1,6 @@
 ---
-- name: Configuracion Servidores Web CaribeXperience
-  hosts: project_caribexperience
+- name: Configure CaribeXperience backend
+  hosts: all
   become: true
-  roles:
-    - common
-    - webserver
+  serial: 1
+  roles: [common, webserver, deploy]

@@ -1,0 +1,35 @@
+name: Optional read-only infrastructure plan
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+jobs:
+  plan:
+    if: vars.ENABLE_AWS_PLAN == 'true' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: aws-plan
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+      - name: Plan against existing backend without creating bootstrap resources
+        run: |
+          terraform -chdir=terraform init -input=false
+          TF_VAR_backend_release=$(terraform -chdir=terraform output -raw backend_release 2>/dev/null || printf '%s' '${{ github.event.pull_request.head.sha }}')
+          export TF_VAR_backend_release
+          terraform -chdir=terraform plan -input=false -lock=false -no-color > /tmp/plan.txt
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('/tmp/plan.txt', 'utf8').slice(-55000);
+            await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body: 'Terraform plan (read-only):\n```\n' + plan + '\n```'});

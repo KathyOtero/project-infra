@@ -2,5 +2,10 @@
 *.tfstate
 *.tfstate.*
 *.exe
+*.tfplan
+*.tfvars
+!*.tfvars.example
+__pycache__/
+.validation/
 .idea/
 .vscode/

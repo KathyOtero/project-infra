@@ -49,5 +49,48 @@ variable "private_subnet_b_cidr" {
 variable "instance_type" {
   description = "Tipo de instancia EC2"
   type        = string
-  default     = "t2.micro"
+  default     = "t3.micro"
+}
+
+variable "student" {
+  type    = string
+  default = "Los Parrilleros"
+}
+
+variable "backend_release" {
+  description = "Immutable Git commit SHA published by the manual deployment workflow"
+  type        = string
+  default     = "0000000000000000000000000000000000000000"
+  validation {
+    condition     = can(regex("^[a-f0-9]{40}$", var.backend_release))
+    error_message = "Use a full Git commit SHA."
+  }
+}
+
+variable "domain_name" {
+  type    = string
+  default = ""
+}
+
+variable "zone_id" {
+  type    = string
+  default = ""
+}
+
+variable "cloudfront_certificate_arn" {
+  description = "ACM certificate in us-east-1, required with domain_name"
+  type        = string
+  default     = ""
+}
+
+variable "alb_certificate_arn" {
+  description = "Regional ACM certificate matching alb_origin_domain; required for HTTPS origin"
+  type        = string
+  default     = ""
+}
+
+variable "alb_origin_domain" {
+  description = "DNS name within zone_id for the HTTPS ALB origin"
+  type        = string
+  default     = ""
 }
