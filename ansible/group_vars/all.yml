@@ -1,1 +1,3 @@
-app_name: "CaribeXperience"`nhttp_port: 80`nweb_server_package: "httpd"
+app_name: "CaribeXperience"
+http_port: 80
+web_server_package: "httpd"
