@@ -20,6 +20,13 @@ a la admitida por Docker Engine 29. Se añadió `api.version=1.44` en recursos
 de prueba y se repitió `mvn verify` satisfactoriamente. Se configuró Maven
 Failsafe para que las pruebas `*IT` se ejecuten realmente en `verify`.
 
+La primera ejecución de CI detectó que la prueba del launcher escribía en
+`/run`, inaccesible para el usuario sin privilegios de GitHub Actions. La
+validación inicial en Docker como root no detectó esta diferencia. Se
+aislaron los archivos de la prueba en un directorio temporal accesible,
+manteniendo `/run` en el servicio de producción. El fallo se reprodujo y
+la corrección se comprobó con un usuario Linux sin privilegios.
+
 La instalación npm reportó además dos vulnerabilidades de severidad alta
 en las dependencias existentes. No se realizaron actualizaciones ajenas al
 alcance de infraestructura. Revisarlas antes de una publicación real.

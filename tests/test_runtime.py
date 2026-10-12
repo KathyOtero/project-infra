@@ -2,6 +2,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -34,7 +35,14 @@ class RuntimeTest(unittest.TestCase):
                 create = next(c for c in calls if c[1] == 'create')
                 self.assertFalse(Path(create[create.index('--env-file') + 1]).exists())
 
-        with patch.object(runtime.Path, 'read_text', autospec=True) as read, patch.object(runtime.boto3, 'client', side_effect=[sm, ecr]), patch.object(runtime.subprocess, 'run', side_effect=run):
+        original_directory = tempfile.TemporaryDirectory
+        original_file = tempfile.NamedTemporaryFile
+        with original_directory() as test_run, \
+                patch.object(runtime.tempfile, 'TemporaryDirectory', side_effect=lambda *args, **kwargs: original_directory(*args, **dict(kwargs, dir=test_run))), \
+                patch.object(runtime.tempfile, 'NamedTemporaryFile', side_effect=lambda *args, **kwargs: original_file(*args, **dict(kwargs, dir=test_run))), \
+                patch.object(runtime.Path, 'read_text', autospec=True) as read, \
+                patch.object(runtime.boto3, 'client', side_effect=[sm, ecr]), \
+                patch.object(runtime.subprocess, 'run', side_effect=run):
             original_open = Path.open
             def read_file(path, *args, **kwargs):
                 if str(path) == '/opt/caribexperience/config.json':
