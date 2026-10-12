@@ -1,14 +1,14 @@
 plugin: amazon.aws.aws_ec2
-regions:
-  - us-east-1
+regions: [us-east-1]
 filters:
   tag:Project: caribexperience
+  tag:Environment: "{{ lookup('env', 'CARIBE_ENVIRONMENT') | default('dev', true) }}"
+  tag:Role: backend
   instance-state-name: [running]
-keyed_groups:
-  - key: tags.Environment
-    prefix: env
-  - key: tags.Project
-    prefix: project
-hostnames:
-  - ip-address
-  - dns-name
+hostnames: [instance-id]
+compose:
+  ansible_host: instance_id
+  ansible_connection: "'amazon.aws.aws_ssm'"
+  ansible_aws_ssm_region: "lookup('env', 'AWS_REGION') | default('us-east-1', true)"
+  ansible_aws_ssm_bucket_name: "lookup('env', 'ANSIBLE_SSM_BUCKET')"
+strict: true

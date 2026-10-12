@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+dnf install -y python3.11-pip
+python3.11 -m venv /opt/caribe-ansible
+/opt/caribe-ansible/bin/pip install 'ansible-core==2.18.6'
+mkdir -p /opt/caribexperience
+aws s3 cp 's3://${bucket}/releases/${release}/ansible.tar.gz' /opt/caribexperience/ansible.tar.gz --region '${region}'
+tar -xzf /opt/caribexperience/ansible.tar.gz -C /opt/caribexperience
+cat > /opt/caribexperience/config.json <<'CONFIG'
+${config}
+CONFIG
+cd /opt/caribexperience/ansible
+ANSIBLE_CONFIG=ansible.cfg /opt/caribe-ansible/bin/ansible-playbook -i localhost, -c local site.yml -e @/opt/caribexperience/config.json

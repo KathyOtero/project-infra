@@ -1,0 +1,60 @@
+---
+- name: Validate deployment inputs
+  ansible.builtin.assert:
+    that:
+      - backend_image is defined
+      - db_secret_arn is defined
+      - jwt_secret_arn is defined
+      - db_endpoint is defined
+      - aws_region is defined
+      - log_group is defined
+      - cors_origin is defined
+- name: Install runtime launcher
+  ansible.builtin.copy:
+    src: start_backend.py
+    dest: /opt/caribexperience/start_backend.py
+    owner: root
+    mode: '0700'
+  notify: Restart backend
+- name: Install non-secret runtime configuration
+  ansible.builtin.copy:
+    content: "{{ {'backend_image': backend_image, 'db_secret_arn': db_secret_arn, 'jwt_secret_arn': jwt_secret_arn, 'db_endpoint': db_endpoint, 'aws_region': aws_region, 'log_group': log_group, 'cors_origin': cors_origin} | to_nice_json }}"
+    dest: /opt/caribexperience/config.json
+    owner: root
+    mode: '0600'
+  notify: Restart backend
+- name: Install backend service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/caribexperience.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=CaribeXperience backend container
+      After=docker.service network-online.target
+      Requires=docker.service
+      Wants=network-online.target
+      [Service]
+      Restart=always
+      RestartSec=15
+      ExecStart=/usr/bin/python3 /opt/caribexperience/start_backend.py
+      ExecStop=-/usr/bin/docker stop caribexperience-backend
+      TimeoutStartSec=300
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart backend
+- name: Enable application service
+  ansible.builtin.systemd_service:
+    name: caribexperience
+    enabled: true
+    state: started
+    daemon_reload: true
+- name: Apply handlers before checking health
+  ansible.builtin.meta: flush_handlers
+- name: Wait for database migrations and backend
+  ansible.builtin.uri:
+    url: http://127.0.0.1/actuator/health
+    status_code: 200
+  register: backend_health
+  retries: 60
+  delay: 10
+  until: backend_health.status == 200

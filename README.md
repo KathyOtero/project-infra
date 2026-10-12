@@ -56,7 +56,7 @@ flowchart TB
             NAT2[NAT GW - AZ b]
         end
         subgraph PRIV["Subredes privadas"]
-            subgraph ASG["Auto Scaling Group (min 2 / deseado 2 / máx 6)"]
+            subgraph ASG["Auto Scaling Group (min 2 / deseado 2 / máx 4)"]
                 EC2A[EC2 backend - AZ a]
                 EC2B[EC2 backend - AZ b]
             end
@@ -114,9 +114,9 @@ flowchart TB
 ```
 project-infra/
 ├── .github/workflows/
-│   └── terraform-ci.yml        # Pipeline de validación de Terraform
+│   └── terraform-ci.yml        # Validación y despliegue manual separado
 ├── ansible/
-│   └── site.yml                # Playbook: instala Nginx en los webservers
+│   └── site.yml                # Playbook: Docker, Nginx y backend por SSM
 ├── backend/                    # API REST (Spring Boot)
 │   ├── src/main/java/com/caribexperience/
 │   │   ├── config/  domain/  repository/  service/
@@ -131,7 +131,7 @@ project-infra/
 │   ├── Dockerfile              # Build multi-etapa (Node -> nginx)
 │   └── nginx.conf              # SPA fallback + proxy /api -> backend
 ├── terraform/
-│   └── main.tf                 # Provider AWS, VPC y subredes públicas
+│   └── main.tf                 # Arquitectura HA y módulo de red
 └── docs/                       # Plan, diseño de BD, etapas y arquitectura AWS
     └── diagramas/arquitectura-aws-ha.drawio
 ```
@@ -143,11 +143,11 @@ project-infra/
 | Aplicación (backend + frontend) | Completa: auth, CRUD de experiencias, reservas con control de cupo, historial |
 | Contenerización (Docker / Compose) | Completa y probada en local |
 | Diseño de arquitectura AWS | Completo (diagrama + documentación) |
-| Terraform | **En progreso:** provider, VPC `10.0.0.0/16` y 2 subredes públicas (1a y 1b) |
-| Ansible | **En progreso:** playbook base que instala y habilita Nginx |
-| CI/CD | **En progreso:** job de validación (`fmt`, `init`, `validate`) |
+| Terraform | Arquitectura HA implementada y preparada para validación local |
+| Ansible | Roles de runtime/deploy e inventario privado SSM |
+| CI/CD | Validación sin AWS, plan opcional y despliegue manual separado |
 
-Pendiente para las siguientes entregas: subredes privadas, Internet/NAT Gateway, tablas de rutas, Security Groups, ALB, Launch Template y Auto Scaling Group, módulos reutilizables, remote state (S3 + DynamoDB), roles/inventario dinámico en Ansible y los jobs `plan`/`apply`/`configure` del pipeline.
+No se ha desplegado infraestructura en AWS. Guía: [`docs/15-iac-cicd.md`](docs/15-iac-cicd.md).
 
 ## 6. Ejecutar la aplicación en local
 
@@ -206,7 +206,7 @@ npm run dev        # http://localhost:5173
 
 ```bash
 cd backend
-mvn test           # Las pruebas de integración usan Testcontainers (requiere Docker)
+mvn verify         # Incluye integración MySQL con Testcontainers (Docker 25+)
 ```
 
 ### Endpoints principales
@@ -228,79 +228,50 @@ La referencia completa y probable está en Swagger UI.
 
 ## 7. Infraestructura con Terraform
 
-Directorio: [`terraform/`](terraform/)
+Arquitectura implementada: módulo de red en dos AZ, NAT por zona, ALB único,
+EC2 privadas sin SSH, ASG 2/2/4 con CPU objetivo 70%, RDS MySQL Multi-AZ,
+S3/CloudFront con OAC, ECR, Secrets Manager, IAM y CloudWatch. Los bloques
+`moved` conservan el estado de los recursos de red anteriores.
 
-Recursos definidos actualmente:
-
-- Provider AWS (`~> 5.0`) en `us-east-1`, con `default_tags` (`Project`, `Environment`, `Student`).
-- VPC `10.0.0.0/16` con DNS habilitado.
-- Subred pública `10.0.1.0/24` en `us-east-1a` y `10.0.2.0/24` en `us-east-1b`.
-
-### Uso
+Route 53 y TLS del ALB se activan con dominio y certificados ACM existentes.
+Sin dominio, CloudFront usa HTTPS administrado y su origen ALB usa HTTP.
+La guía de operación detalla estos requisitos.
 
 ```bash
-cd terraform
-terraform init
-terraform fmt -check
-terraform validate
-terraform plan
-terraform apply
+terraform fmt -check -recursive terraform
+terraform -chdir=terraform init -backend=false
+terraform -chdir=terraform validate
+terraform -chdir=terraform test
 ```
 
-> Las credenciales de AWS **nunca** se escriben en el código: se usan variables de entorno (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) o un perfil local de AWS CLI.
-
-> **Importante:** al terminar cada sesión de trabajo ejecutar `terraform destroy` para controlar costos.
-
-### Alcance previsto
-
-Subredes privadas, Internet Gateway y NAT Gateway, ALB con target group HTTP (puerto 80) y health checks, Auto Scaling Group (mín. 2, deseado 2, máx. 6, `t3.micro`) con política de escalado por CPU > 70 % durante 2 minutos, Security Groups (ALB: 80/443 desde Internet; EC2: 80 solo desde el ALB), módulos de red y cómputo, y remote state en S3 con bloqueo en DynamoDB.
+El bootstrap del estado remoto S3/DynamoDB es una operación explícita,
+separada de CI. No se han desplegado recursos en AWS.
 
 ## 8. Configuración con Ansible
 
-Directorio: [`ansible/`](ansible/)
-
-El playbook `site.yml` configura los hosts del grupo `webservers`, de forma idempotente:
-
-1. Actualiza el índice de paquetes (`apt`).
-2. Instala Nginx.
-3. Asegura que el servicio esté iniciado y habilitado.
-4. Despliega una página de inicio base.
-
-### Uso
+Roles `common`, `webserver` y `deploy`: Docker, Nginx como proxy del backend,
+servicio systemd, secretos recuperados en EC2 y comprobación de salud.
+El inventario selecciona instancias por proyecto/entorno/rol y usa SSM sin
+SSH ni IP pública. Las instancias creadas por Auto Scaling ejecutan el mismo
+playbook desde un bundle S3 versionado por SHA.
 
 ```bash
-cd ansible
-ansible-playbook -i <inventario> site.yml
+ansible-galaxy collection install -r ansible/requirements.yml
+ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook -i localhost, -c local ansible/site.yml --syntax-check
 ```
-
-Donde `<inventario>` define el grupo `webservers` (por ahora un inventario estático; se migrará a inventario dinámico por etiquetas EC2).
-
-### Alcance previsto
-
-Roles `common`, `webserver` y `deploy`, variables por entorno en `group_vars` (dev/prod), configuración del firewall local e inventario dinámico (`aws_ec2`).
 
 ## 9. Pipeline CI/CD
 
-Archivo: [`.github/workflows/terraform-ci.yml`](.github/workflows/terraform-ci.yml)
-
-Se ejecuta en cada `push` y `pull request` hacia `main`:
-
-1. Checkout del código.
-2. Instalación de Terraform 1.5.0.
-3. `terraform fmt`
-4. `terraform init -backend=false`
-5. `terraform validate`
-
-### Alcance previsto
-
-| Job | Descripción |
+| Workflow | Comportamiento |
 |---|---|
-| `validate` | `fmt -check`, `validate` y `tflint` |
-| `plan` | `terraform plan` con el resultado comentado en el PR |
-| `apply` | `terraform apply` en merge a `main`, con aprobación manual |
-| `configure` | Ejecuta el playbook de Ansible tras el despliegue |
+| terraform-ci.yml | Push/PR a main y mejoras-andres: Terraform/TFLint, Ansible, pruebas Python, Maven verify y lint/build frontend; sin AWS |
+| plan.yml | Plan de lectura opcional para PR interno; ENABLE_AWS_PLAN=true, OIDC y environment aws-plan |
+| deploy.yml | Despliegue exclusivamente manual desde main, protegido por environment aws-dev; publica release antes de arrancar ASG |
+| destroy.yml | Manual con confirmación; solo recursos del estado, sin limpieza general de la cuenta |
 
-Las credenciales de AWS se leerán desde **GitHub Secrets** (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`).
+**Los environments deben configurarse en GitHub con revisores requeridos.**
+Credenciales temporales mediante OIDC. Procedimiento, permisos, certificados
+y límites de validación: [`docs/15-iac-cicd.md`](docs/15-iac-cicd.md).
 
 ## 10. Seguridad
 

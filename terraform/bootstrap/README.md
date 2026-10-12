@@ -17,6 +17,11 @@ Este módulo crea los recursos base en AWS necesarios para almacenar y proteger 
 
 ## Cómo ejecutarlo (Solo una vez)
 
+No se ha ejecutado durante esta sesión. `terraform apply` crea recursos y
+debe reservarse para un futuro despliegue autorizado. Requiere Terraform
+1.9.8. Si los recursos ya existen, importarlos antes de aplicar y conservar
+el estado de bootstrap. CI únicamente usa init con backend=false y validate.
+
 Si deseas aprovisionarlo manualmente con Terraform CLI:
 
 ```bash
